@@ -67,7 +67,7 @@ Password: admin123
 
 ---
 
-## 4. Full User Flow
+## 4. User Flow
 
 ### Admin Flow
 1. Log in at http://localhost:3000/login with admin credentials
