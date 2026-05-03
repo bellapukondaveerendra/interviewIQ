@@ -1,0 +1,227 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f4f6f9;
+  color: #1a1a2e;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.page-center {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Cards ── */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  padding: 32px;
+}
+.card-sm { max-width: 460px; width: 100%; }
+.card-md { max-width: 680px; width: 100%; }
+
+/* ── Typography ── */
+h1 { font-size: 1.8rem; font-weight: 700; }
+h2 { font-size: 1.4rem; font-weight: 600; }
+h3 { font-size: 1.1rem; font-weight: 600; }
+p  { line-height: 1.6; }
+
+.text-muted  { color: #6b7280; font-size: 0.9rem; }
+.text-center { text-align: center; }
+.text-error  { color: #dc2626; font-size: 0.85rem; margin-top: 4px; }
+.text-success{ color: #16a34a; font-size: 0.85rem; }
+
+/* ── Forms ── */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 500; font-size: 0.9rem; margin-bottom: 6px; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+  background: #fff;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus { border-color: #4f46e5; }
+.form-group textarea { resize: vertical; min-height: 80px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background .2s, opacity .2s, transform .1s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn-primary   { background: #4f46e5; color: #fff; }
+.btn-primary:hover:not(:disabled)   { background: #4338ca; }
+.btn-success   { background: #16a34a; color: #fff; }
+.btn-success:hover:not(:disabled)   { background: #15803d; }
+.btn-danger    { background: #dc2626; color: #fff; }
+.btn-danger:hover:not(:disabled)    { background: #b91c1c; }
+.btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.btn-secondary:hover:not(:disabled) { background: #e5e7eb; }
+.btn-ghost     { background: transparent; color: #4f46e5; }
+.btn-ghost:hover:not(:disabled)     { background: #ede9fe; }
+.btn-sm        { padding: 6px 14px; font-size: 0.85rem; }
+.btn-full      { width: 100%; }
+
+/* ── Nav ── */
+nav.topnav {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-brand { font-size: 1.2rem; font-weight: 700; color: #4f46e5; }
+.nav-links  { display: flex; gap: 12px; align-items: center; }
+
+/* ── Status Badges ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-pending   { background: #fef3c7; color: #92400e; }
+.badge-approval  { background: #dbeafe; color: #1e40af; }
+.badge-rejected  { background: #fee2e2; color: #991b1b; }
+.badge-hired     { background: #d1fae5; color: #065f46; }
+.badge-active    { background: #ede9fe; color: #4c1d95; }
+
+/* ── Alert ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+.alert-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.alert-info    { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+/* ── Table ── */
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+th { font-size: 0.82rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; background: #f9fafb; }
+tr:hover td { background: #f9fafb; }
+
+/* ── Interview Chat ── */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.chat-bubble {
+  max-width: 78%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+.chat-bubble.ai {
+  background: #ede9fe;
+  color: #2d1d6e;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+.chat-bubble.user {
+  background: #4f46e5;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+.chat-bubble.feedback {
+  background: #f0fdf4;
+  color: #14532d;
+  border: 1px solid #bbf7d0;
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+/* ── Timer ── */
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #fff3cd;
+  color: #92400e;
+}
+.timer.urgent { background: #fee2e2; color: #991b1b; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+/* ── Misc ── */
+.divider { height: 1px; background: #e5e7eb; margin: 24px 0; }
+.mt-8  { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.flex  { display: flex; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-center  { display: flex; align-items: center; gap: 8px; }
+.gap-8  { gap: 8px; }
+.gap-12 { gap: 12px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.voice-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  transition: background .2s, transform .1s;
+  flex-shrink: 0;
+}
+.voice-btn.idle      { background: #e5e7eb; color: #374151; }
+.voice-btn.listening { background: #dc2626; color: #fff; animation: pulse 1s infinite; }
+.voice-btn:hover     { transform: scale(1.08); }
