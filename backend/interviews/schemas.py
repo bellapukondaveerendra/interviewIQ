@@ -35,7 +35,7 @@ class CompleteRequest(BaseModel):
 
 
 class CompleteInterviewResponse(BaseModel):
-    overall_score: float
+    overall_score: Optional[float] = None
     message: str
 
 

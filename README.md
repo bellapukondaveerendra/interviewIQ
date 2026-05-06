@@ -62,7 +62,7 @@ Frontend runs at: http://localhost:3000
 
 ```
 Email:    admin@interviewiq.com
-Password: admin123
+Password: admin@123
 ```
 
 ---

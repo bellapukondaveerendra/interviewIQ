@@ -27,10 +27,26 @@ async function request(method, path, body = null, params = null) {
   return data;
 }
 
+async function requestMultipart(method, path, formData) {
+  const url = `${BASE}${path}`;
+  // Do NOT set Content-Type — browser sets it with the correct boundary
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(url, { method, headers, body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || `Request failed: ${res.status}`);
+  }
+  return data;
+}
+
 // ── Auth ──────────────────────────────────────
 export const authApi = {
-  signup: (body) => request("POST", "/auth/signup", body),
+  signup: (formData) => requestMultipart("POST", "/auth/signup", formData),
   login: (body) => request("POST", "/auth/login", body),
+  checkEmail: (email) => request("GET", "/auth/check-email", null, { email }),
 };
 
 // ── Admin ─────────────────────────────────────
@@ -39,6 +55,17 @@ export const adminApi = {
   getCandidates: (campaignId) => request("GET", `/admin/campaigns/${campaignId}/candidates`),
   getReview: (invitationId) => request("GET", `/admin/invitations/${invitationId}/review`),
   review: (invitationId, body) => request("POST", `/admin/invitations/${invitationId}/review`, body),
+  getResume: async (candidateId) => {
+    const token = getToken();
+    const res = await fetch(`${BASE}/admin/candidates/${candidateId}/resume`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Resume not found");
+    }
+    return res.blob();
+  },
 };
 
 // ── Campaigns ─────────────────────────────────

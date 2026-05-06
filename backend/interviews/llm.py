@@ -104,14 +104,13 @@ Candidate's answer:
 
 Evaluate the answer strictly and return ONLY valid JSON in exactly this format â€” no other text:
 {{
-  "score": <integer 1-10>,
   "feedback": "<1-2 sentences of direct, specific feedback>",
   "suggestions": "<1-2 sentences of specific, actionable improvement suggestions>"
 }}"""
 
         response = _client.messages.create(
             model=MODEL,
-            max_tokens=400,
+            max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
@@ -123,13 +122,11 @@ Evaluate the answer strictly and return ONLY valid JSON in exactly this format â
         try:
             result = json.loads(raw)
             results.append({
-                "score": max(1, min(10, int(result.get("score", 5)))),
                 "feedback": str(result.get("feedback", "")),
                 "suggestions": str(result.get("suggestions", "")),
             })
         except (json.JSONDecodeError, ValueError, TypeError):
             results.append({
-                "score": 5,
                 "feedback": "Unable to evaluate this response.",
                 "suggestions": "Provide more detailed and structured answers.",
             })

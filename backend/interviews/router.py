@@ -225,8 +225,7 @@ async def complete_interview(
             if i < len(evaluated_pairs):
                 evaluated_pairs[i].update(ev)
 
-    scores = [qa.get("score", 0) for qa in evaluated_pairs if "score" in qa]
-    overall_score = round(sum(scores) / len(scores), 2) if scores else 0.0
+    overall_score = None
 
     final_status = "timed_out" if body.timed_out else "completed"
     await sessions_col.update_one(

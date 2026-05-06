@@ -306,9 +306,9 @@ export default function InterviewScreen() {
     <div className="page-center">
       <div className="card card-sm text-center">
         <span className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
-        <h3 className="mt-16">Evaluating your responses…</h3>
+        <h3 className="mt-16">Submitting your interview…</h3>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: 8 }}>
-          Please wait while we score your interview.
+          Please wait while we process your responses.
         </p>
       </div>
     </div>

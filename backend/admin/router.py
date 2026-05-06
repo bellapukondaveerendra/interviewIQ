@@ -1,4 +1,6 @@
+import os
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import FileResponse
 from datetime import datetime
 from bson import ObjectId
 from database import get_collection
@@ -15,13 +17,21 @@ async def get_campaigns(admin=Depends(require_admin)):
     result = []
     async for c in campaigns_col.find():
         c_id = str(c["_id"])
-        count = await invitations_col.count_documents({"campaign_id": c_id})
+        status_counts = {"pending_candidate": 0, "pending_approval": 0, "hired": 0, "rejected": 0}
+        async for inv in invitations_col.find({"campaign_id": c_id}, {"status": 1}):
+            s = inv["status"]
+            if s.startswith("pending_stage_"):
+                status_counts["pending_candidate"] += 1
+            elif s in status_counts:
+                status_counts[s] += 1
+        total = sum(status_counts.values())
         result.append({
             "id": c_id,
             "job_title": c["job_title"],
             "job_description": c.get("job_description", ""),
             "stages": c.get("stages", []),
-            "candidate_count": count,
+            "candidate_count": total,
+            "status_counts": status_counts,
             "created_at": c["created_at"].isoformat(),
         })
     return result
@@ -78,7 +88,6 @@ async def get_candidate_review(invitation_id: str, admin=Depends(require_admin))
         {"_id": ObjectId(invitation["campaign_id"])}
     )
 
-    # Build a lookup of stage_responses by stage_number for quick access
     sr_by_stage = {
         r["stage_number"]: r
         for r in invitation.get("stage_responses", [])
@@ -99,19 +108,17 @@ async def get_candidate_review(invitation_id: str, admin=Depends(require_admin))
             "stage_type": s["stage_type"],
             "status": s["status"],
             "qa_pairs": s.get("qa_pairs", []),
-            "overall_score": s.get("overall_score"),
             "started_at": s["started_at"].isoformat() if s.get("started_at") else None,
             "completed_at": s["completed_at"].isoformat() if s.get("completed_at") else None,
-            # Per-stage admin review (may be absent if not yet reviewed)
             "admin_approved": sr.get("admin_approved"),
             "admin_feedback": sr.get("admin_feedback"),
+            "admin_score": sr.get("admin_score"),
         })
 
     current_stage_number = invitation.get("current_stage_number")
     inv_status = invitation["status"]
     stages_sorted = sorted(campaign.get("stages", []), key=lambda s: s["order"])
 
-    # Compute per-stage state for the admin UI
     stage_states = {}
     for stage in stages_sorted:
         sn = stage["stage_number"]
@@ -121,17 +128,20 @@ async def get_candidate_review(invitation_id: str, admin=Depends(require_admin))
             if sn < current_stage_number:
                 stage_states[sn] = "completed"
             elif sn == current_stage_number:
-                stage_states[sn] = "current"   # This is the one being reviewed
+                stage_states[sn] = "current"
             else:
                 stage_states[sn] = "future"
         else:
-            # pending_stage_N
             if sn < current_stage_number:
                 stage_states[sn] = "completed"
             elif sn == current_stage_number:
                 stage_states[sn] = "pending_interview"
             else:
                 stage_states[sn] = "future"
+
+    tech_stack = candidate.get("tech_stack", [])
+    if isinstance(tech_stack, str):
+        tech_stack = [t.strip() for t in tech_stack.split(",") if t.strip()]
 
     return {
         "invitation_id": invitation_id,
@@ -140,10 +150,11 @@ async def get_candidate_review(invitation_id: str, admin=Depends(require_admin))
             "name": candidate.get("name"),
             "email": candidate.get("email"),
             "profession": candidate.get("profession"),
-            "tech_stack": candidate.get("tech_stack"),
+            "tech_stack": tech_stack,
             "intro": candidate.get("intro"),
             "experience_level": candidate.get("experience_level"),
             "preferred_domain": candidate.get("preferred_domain"),
+            "has_resume": bool(candidate.get("resume_path")),
         },
         "campaign": {
             "id": str(campaign["_id"]),
@@ -181,7 +192,6 @@ async def review_candidate(
     current_stage_number = invitation["current_stage_number"]
     existing_responses = invitation.get("stage_responses", [])
 
-    # Issue 2 fix: verify a completed interview exists for the current stage
     current_sr = next(
         (r for r in existing_responses if r["stage_number"] == current_stage_number),
         None,
@@ -192,12 +202,12 @@ async def review_candidate(
             detail=f"No completed interview found for stage {current_stage_number}. Cannot review.",
         )
 
-    # Issue 1 fix: store admin decision per-stage in stage_responses
     updated_responses = [
         {
             **r,
             "admin_approved": data.action == ReviewAction.approve,
             "admin_feedback": data.comment or None,
+            "admin_score": data.admin_score,
             "reviewed_at": datetime.utcnow(),
         }
         if r["stage_number"] == current_stage_number
@@ -258,3 +268,24 @@ async def review_candidate(
         "status": f"pending_stage_{next_stage['stage_number']}",
         "message": f"Candidate approved. Moving to stage {next_stage['stage_number']} ({next_stage['stage_type']}).",
     }
+
+
+@router.get("/candidates/{candidate_id}/resume")
+async def get_resume(candidate_id: str, admin=Depends(require_admin)):
+    candidates_col = get_collection("candidates")
+    candidate = await candidates_col.find_one({"_id": ObjectId(candidate_id)})
+    if not candidate or not candidate.get("resume_path"):
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    resume_path = candidate["resume_path"]
+    if not os.path.exists(resume_path):
+        raise HTTPException(status_code=404, detail="Resume file not found on server")
+
+    filename = candidate.get("resume_filename", "resume")
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "pdf"
+    if ext == "pdf":
+        media_type = "application/pdf"
+    else:
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    return FileResponse(path=resume_path, filename=filename, media_type=media_type)

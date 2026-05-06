@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -11,6 +12,7 @@ from candidate.router import router as candidate_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs(os.path.join(os.path.dirname(__file__), "uploads", "resumes"), exist_ok=True)
     await connect_db()
     yield
     await close_db()

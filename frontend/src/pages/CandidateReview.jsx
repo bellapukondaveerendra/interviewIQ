@@ -11,12 +11,19 @@ const STATUS_BADGE = {
   hired: 'badge-hired',
 };
 
-// Per-stage state visual config
 const STAGE_STATE_CONFIG = {
   completed: { label: 'Reviewed', color: '#16a34a', bg: '#f0fdf4', dot: '#16a34a' },
   current:   { label: 'Pending Review', color: '#d97706', bg: '#fffbeb', dot: '#d97706' },
   pending_interview: { label: 'Awaiting Interview', color: '#6b7280', bg: '#f9fafb', dot: '#9ca3af' },
   future:    { label: 'Future', color: '#9ca3af', bg: '#f9fafb', dot: '#d1d5db' },
+};
+
+const SCORE_LABELS = {
+  1: 'Poor',
+  2: 'Below Expectations',
+  3: 'Meets Expectations',
+  4: 'Above Expectations',
+  5: 'Exceeds Expectations',
 };
 
 export default function CandidateReview() {
@@ -27,6 +34,7 @@ export default function CandidateReview() {
   const [error, setError] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
   const [comment, setComment] = useState('');
+  const [adminScore, setAdminScore] = useState(null);
   const [reviewResult, setReviewResult] = useState(null);
   const [activeStage, setActiveStage] = useState(0);
 
@@ -34,12 +42,12 @@ export default function CandidateReview() {
     try {
       const d = await adminApi.getReview(invitationId);
       setData(d);
-      // Auto-select the "current" stage tab (the one pending review)
       const currentIdx = d.sessions.findIndex(
         (s) => d.invitation.stage_states?.[s.stage_number] === 'current'
       );
       setActiveStage(currentIdx >= 0 ? currentIdx : d.sessions.length - 1);
       setComment('');
+      setAdminScore(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,16 +58,35 @@ export default function CandidateReview() {
   useEffect(() => { loadData(); }, [invitationId]);
 
   const doReview = async (action) => {
+    if (!adminScore) {
+      setError('Please provide a score before making a decision.');
+      return;
+    }
     setReviewLoading(true);
     setError('');
     try {
-      const res = await adminApi.review(invitationId, { action, comment: comment || undefined });
+      const res = await adminApi.review(invitationId, {
+        action,
+        comment: comment || undefined,
+        admin_score: adminScore,
+      });
       setReviewResult(res);
       await loadData();
     } catch (err) {
       setError(err.message);
     } finally {
       setReviewLoading(false);
+    }
+  };
+
+  const viewResume = async () => {
+    setError('');
+    try {
+      const blob = await adminApi.getResume(data.candidate.id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      setError('Could not load resume: ' + err.message);
     }
   };
 
@@ -109,6 +136,15 @@ export default function CandidateReview() {
               <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: 4 }}>
                 {candidate.experience_level} · {candidate.preferred_domain}
               </p>
+              {candidate.has_resume && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ marginTop: 10 }}
+                  onClick={viewResume}
+                >
+                  View Resume
+                </button>
+              )}
             </div>
             <div style={{ textAlign: 'right' }}>
               <span className={`badge ${STATUS_BADGE[invitation.status] || 'badge-pending'}`}>
@@ -120,10 +156,18 @@ export default function CandidateReview() {
             </div>
           </div>
 
-          {candidate.tech_stack && (
+          {candidate.tech_stack && candidate.tech_stack.length > 0 && (
             <div style={{ marginTop: 16, padding: '10px 14px', background: '#f9fafb', borderRadius: 8 }}>
               <span className="text-muted" style={{ fontSize: '0.82rem' }}>Tech Stack: </span>
-              <span style={{ fontSize: '0.85rem' }}>{candidate.tech_stack}</span>
+              {candidate.tech_stack.map((t) => (
+                <span key={t} style={{
+                  display: 'inline-block',
+                  background: '#ede9fe', color: '#4f46e5',
+                  padding: '2px 8px', borderRadius: 999,
+                  fontSize: '0.78rem', fontWeight: 500,
+                  marginRight: 4, marginTop: 2,
+                }}>{t}</span>
+              ))}
             </div>
           )}
           {candidate.intro && (
@@ -134,7 +178,7 @@ export default function CandidateReview() {
           )}
         </div>
 
-        {/* Session tabs with stage-state indicators */}
+        {/* Session tabs */}
         {sessions.length > 0 ? (
           <div className="card mb-16">
             <div className="flex gap-8 mb-16" style={{ flexWrap: 'wrap' }}>
@@ -185,11 +229,54 @@ export default function CandidateReview() {
           </div>
         )}
 
-        {/* Admin review panel — only shown when status is pending_approval AND active tab is the current stage */}
+        {/* Admin review panel */}
         {canReview && activeStageState === 'current' && (
           <div className="card">
             <h3 className="mb-16">Admin Decision — Stage {activeSession?.stage_number}</h3>
+
+            {/* Score selector */}
             <div className="form-group">
+              <label>
+                Stage Score (1–5) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <label key={s} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '7px 14px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    border: `2px solid ${adminScore === s ? '#4f46e5' : '#e5e7eb'}`,
+                    background: adminScore === s ? '#ede9fe' : '#fff',
+                    fontSize: '0.85rem',
+                    fontWeight: adminScore === s ? 600 : 400,
+                    transition: 'all 0.1s',
+                  }}>
+                    <input
+                      type="radio"
+                      name="admin_score"
+                      value={s}
+                      checked={adminScore === s}
+                      onChange={() => setAdminScore(s)}
+                      style={{ display: 'none' }}
+                    />
+                    <span style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: adminScore === s ? '#4f46e5' : '#e5e7eb',
+                      color: adminScore === s ? '#fff' : '#374151',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.78rem', fontWeight: 700, flexShrink: 0,
+                    }}>{s}</span>
+                    {SCORE_LABELS[s]}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div className="form-group mt-16">
               <label>Comment (optional)</label>
               <textarea
                 rows={3}
@@ -198,26 +285,31 @@ export default function CandidateReview() {
                 onChange={(e) => setComment(e.target.value)}
               />
             </div>
+
             <div className="flex gap-8 mt-8">
               <button
                 className="btn btn-success"
                 onClick={() => doReview('approve')}
-                disabled={reviewLoading}
+                disabled={reviewLoading || !adminScore}
               >
                 {reviewLoading ? <span className="spinner" /> : '✓ Approve'}
               </button>
               <button
                 className="btn btn-danger"
                 onClick={() => doReview('reject')}
-                disabled={reviewLoading}
+                disabled={reviewLoading || !adminScore}
               >
                 {reviewLoading ? <span className="spinner" /> : '✗ Reject'}
               </button>
             </div>
+            {!adminScore && (
+              <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: 8 }}>
+                Select a score to enable the decision buttons.
+              </p>
+            )}
           </div>
         )}
 
-        {/* Viewing a past stage — read-only notice */}
         {canReview && activeStageState === 'completed' && (
           <div className="card">
             <p className="text-muted" style={{ fontSize: '0.9rem' }}>
@@ -227,7 +319,6 @@ export default function CandidateReview() {
           </div>
         )}
 
-        {/* Final status — no more action needed */}
         {!canReview && (
           <div className="card">
             <p className="text-muted">
@@ -262,7 +353,8 @@ function SessionDetail({ session, stageState }) {
             {cfg.label}
           </span>
         </div>
-        {session.overall_score !== null && session.overall_score !== undefined && (
+        {/* Show admin score if this stage was already reviewed */}
+        {session.admin_score !== null && session.admin_score !== undefined && (
           <span style={{
             background: '#ede9fe',
             color: '#4c1d95',
@@ -271,7 +363,7 @@ function SessionDetail({ session, stageState }) {
             fontSize: '0.85rem',
             fontWeight: 600,
           }}>
-            Overall: {session.overall_score}/10
+            Score: {session.admin_score}/5 — {SCORE_LABELS[session.admin_score]}
           </span>
         )}
       </div>
@@ -302,25 +394,9 @@ function SessionDetail({ session, stageState }) {
           padding: 16,
           marginBottom: 12,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <p style={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>
-              Q{qa.question_number}: {qa.question}
-            </p>
-            {qa.score !== undefined && qa.score !== null && (
-              <span style={{
-                background: qa.score >= 7 ? '#d1fae5' : qa.score >= 4 ? '#fef3c7' : '#fee2e2',
-                color: qa.score >= 7 ? '#065f46' : qa.score >= 4 ? '#92400e' : '#991b1b',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                marginLeft: 12,
-                flexShrink: 0,
-              }}>
-                {qa.score}/10
-              </span>
-            )}
-          </div>
+          <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+            Q{qa.question_number}: {qa.question}
+          </p>
 
           <div style={{ marginTop: 10, padding: '10px 14px', background: '#f9fafb', borderRadius: 6 }}>
             <p style={{ fontSize: '0.85rem', color: '#374151' }}>
@@ -331,7 +407,7 @@ function SessionDetail({ session, stageState }) {
 
           {qa.feedback && (
             <div style={{ marginTop: 8, fontSize: '0.82rem', color: '#6b7280' }}>
-              <p><strong>Feedback:</strong> {qa.feedback}</p>
+              <p><strong>AI Feedback:</strong> {qa.feedback}</p>
               {qa.suggestions && <p style={{ marginTop: 4 }}><strong>Suggestions:</strong> {qa.suggestions}</p>}
             </div>
           )}

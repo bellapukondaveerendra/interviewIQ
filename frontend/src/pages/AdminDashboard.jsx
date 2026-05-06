@@ -11,6 +11,23 @@ const STATUS_BADGE = {
   hired: 'badge-hired',
 };
 
+// Priority for sorting: lower = shown first
+function campaignPriority(c) {
+  const sc = c.status_counts || {};
+  if (sc.pending_approval > 0) return 0;   // needs admin action NOW
+  if (sc.pending_candidate > 0) return 1;  // active with candidates
+  if (sc.hired > 0) return 2;
+  if (sc.rejected > 0) return 3;
+  return 4;                                 // no candidates yet
+}
+
+const STATUS_PILL = {
+  pending_approval: { label: 'Needs Review', bg: '#dbeafe', color: '#1e40af' },
+  pending_candidate: { label: 'Active', bg: '#fef3c7', color: '#92400e' },
+  hired: { label: 'Hired', bg: '#d1fae5', color: '#065f46' },
+  rejected: { label: 'Rejected', bg: '#fee2e2', color: '#991b1b' },
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
@@ -24,6 +41,8 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const data = await adminApi.getCampaigns();
+      // Sort by urgency priority
+      data.sort((a, b) => campaignPriority(a) - campaignPriority(b));
       setCampaigns(data);
     } catch (err) {
       setError(err.message);
@@ -76,25 +95,12 @@ export default function AdminDashboard() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {campaigns.map((c) => (
-                  <div
+                  <CampaignCard
                     key={c.id}
-                    className="card"
-                    style={{
-                      cursor: 'pointer',
-                      border: selectedCampaign?.id === c.id ? '2px solid #4f46e5' : '2px solid transparent',
-                      padding: 20,
-                    }}
+                    campaign={c}
+                    selected={selectedCampaign?.id === c.id}
                     onClick={() => selectCampaign(c)}
-                  >
-                    <h3>{c.job_title}</h3>
-                    <p className="text-muted mt-8" style={{ fontSize: '0.82rem' }}>
-                      {c.stages.length} stage{c.stages.length > 1 ? 's' : ''} ·{' '}
-                      {c.candidate_count} candidate{c.candidate_count !== 1 ? 's' : ''}
-                    </p>
-                    <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-                      {new Date(c.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
+                  />
                 ))}
               </div>
             )}
@@ -164,5 +170,52 @@ export default function AdminDashboard() {
         </div>
       </div>
     </>
+  );
+}
+
+function CampaignCard({ campaign, selected, onClick }) {
+  const sc = campaign.status_counts || {};
+
+  // Which status pills to show (only non-zero counts)
+  const pills = Object.entries(STATUS_PILL)
+    .filter(([key]) => sc[key] > 0)
+    .map(([key, cfg]) => ({ key, count: sc[key], ...cfg }));
+
+  return (
+    <div
+      className="card"
+      style={{
+        cursor: 'pointer',
+        border: selected ? '2px solid #4f46e5' : '2px solid transparent',
+        padding: 20,
+      }}
+      onClick={onClick}
+    >
+      <h3>{campaign.job_title}</h3>
+      <p className="text-muted mt-8" style={{ fontSize: '0.82rem' }}>
+        {campaign.stages.length} stage{campaign.stages.length > 1 ? 's' : ''} ·{' '}
+        {campaign.candidate_count} candidate{campaign.candidate_count !== 1 ? 's' : ''}
+      </p>
+      <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: 2 }}>
+        {new Date(campaign.created_at).toLocaleDateString()}
+      </p>
+
+      {pills.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
+          {pills.map(({ key, count, label, bg, color }) => (
+            <span key={key} style={{
+              background: bg,
+              color,
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 999,
+            }}>
+              {count} {label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
